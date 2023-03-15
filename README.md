@@ -2,11 +2,17 @@
 
 # Whisper API - Simplified
 
-This is a variation from [ahmetoner](https://github.com/ahmetoner)'s [whisper-api](https://github.com/ahmetoner/whisper-asr-webservice/) to remove  dependencies: poetry and [fastapi-offline-swagger-ui](https://github.com/ahmetoner/fastapi-offline-swagger-ui) that were not required for my use case.
-
-Note that this does not work on Windows due to gunicorn not running on windows
+This is a variation from [ahmetoner](https://github.com/ahmetoner)'s [whisper-api](https://github.com/ahmetoner/whisper-asr-webservice/) to remove  dependencies: poetry and [fastapi-offline-swagger-ui](https://github.com/ahmetoner/fastapi-offline-swagger-ui) that were not required for my use case and setup ability to build the image from a non-internet connected system.
 
 This build is based on Python 3.8(.5)
+
+Todo list: 
+
+- [x] Get working on specific python version (3.8.5) and package versions
+- [x] Remove fastapi-offline-swagger-ui
+- [ ] Publish basic k8s manifest for deployment 
+- [ ] Enable authentication and authorisation on the fastapi endpoint
+- [ ] Allow the ffmpeg package to be side-loaded/installed into the container image (for when creating image from location that doesn't have internet connection)
 
 # Build Container Image
 ## Setup local docker box
@@ -70,6 +76,7 @@ podman run -d --gpus all -p 9000:9000 -e ASR_MODEL=base localhost/whisper-api:$W
 
 
 # Development Outside Container
+You can run the script directly on a Linux dev machine if you require. Note that this does not work on Windows due to gunicorn not running on Windows.
 
 ## Setting up a dev Linux box: 
 
@@ -159,34 +166,9 @@ podman exec -it c13f28bc4d02 bash
 ```
 
 
-## Installed packages
-When installing ffmpeg on Rocky Linux 8, these are the packages that were installed...
-``` bash
-Installed:
-  SDL2-2.0.10-2.el8.x86_64          alsa-lib-1.2.7.2-1.el8.x86_64                   ffmpeg-4.2.8-1.el8.x86_64                     ffmpeg-libs-4.2.8-1.el8.x86_64
-  flac-libs-1.3.2-9.el8.x86_64      fribidi-1.0.4-9.el8.x86_64                      glibmm24-2.56.0-2.el8.x86_64                  graphite2-1.3.10-10.el8.x86_64
-  gsm-1.0.17-5.el8.x86_64           harfbuzz-1.7.5-3.el8.x86_64                     jack-audio-connection-kit-1.9.14-4.el8.x86_64 lame-libs-3.100-6.el8.x86_64
-  libICE-1.0.9-15.el8.x86_64        libSM-1.2.3-1.el8.x86_64                        libX11-xcb-1.6.8-5.el8.x86_64                 libXfixes-5.0.3-7.el8.x86_64
-  libXft-2.3.3-1.el8.x86_64         libXi-1.7.10-1.el8.x86_64                       libXtst-1.2.3-7.el8.x86_64                    libXxf86vm-1.1.4-9.el8.x86_64
-  libaom-3.1.1-1.el8.x86_64         libass-0.17.0-1.el8.x86_64                      libasyncns-0.8-14.el8.x86_64                  libatomic-8.5.0-16.el8_7.x86_64
-  libavdevice-4.2.8-1.el8.x86_64    libbluray-1.0.2-3.el8.x86_64                    libcdio-2.0.0-3.el8.x86_64                    libcdio-paranoia-10.2+0.94+2-3.el8.x86_64
-  libdatrie-0.2.9-7.el8.x86_64      libdav1d-0.5.2-1.el8.x86_64                     libffado-2.4.4-2.el8.x86_64                   libglvnd-1:1.3.4-1.el8.x86_64
-  libglvnd-glx-1:1.3.4-1.el8.x86_64 libiec61883-1.2.0-18.el8.x86_64                 libjpeg-turbo-1.5.3-12.el8.x86_64             libmfx-1.25-4.el8.x86_64
-  libmodplug-1:0.8.9.0-9.el8.x86_64 libogg-2:1.3.2-10.el8.x86_64                    libraw1394-2.1.2-5.el8.x86_64                 librsvg2-2.42.7-4.el8.x86_64
-  libsamplerate-0.1.9-1.el8.x86_64  libsigc++20-2.10.0-6.el8.x86_64                 libsndfile-1.0.28-12.el8.x86_64               libthai-0.1.27-2.el8.x86_64
-  libtheora-1:1.1.1-21.el8.x86_64   libv4l-1.14.2-3.el8.x86_64                      libva-2.13.0-2.el8.x86_64                     libvdpau-1.4-2.el8.x86_64
-  libvmaf-1.3.15-2.el8.x86_64       libvorbis-1:1.3.6-2.el8.x86_64                  libvpx-1.7.0-8.el8.x86_64                     libwayland-client-1.19.0-1.el8.x86_64
-  libxml++-2.40.1-10.el8.x86_64     libxshmfence-1.3-2.el8.x86_64                   mesa-filesystem-22.1.5-2.el8.x86_64           mesa-libGL-22.1.5-2.el8.x86_64
-  mesa-libglapi-22.1.5-2.el8.x86_64 ocl-icd-2.2.12-1.el8.x86_64                     openal-soft-1.18.2-7.el8.x86_64               opencore-amr-0.1.5-7.el8.x86_64
-  openjpeg2-2.4.0-5.el8.x86_64      opus-1.3-0.4.beta.el8.x86_64                    pango-1.42.4-8.el8.x86_64                     pugixml-1.13-1.el8.x86_64
-  pulseaudio-libs-14.0-4.el8.x86_64 soxr-0.1.3-4.el8.x86_64                         speex-1.2.0-1.el8.x86_64                      srt-libs-1.4.1-3.el8.x86_64
-  vapoursynth-libs-51-1.el8.x86_64  vid.stab-1.1.0-12.20190213gitaeabc8d.el8.x86_64 vo-amrwbenc-0.1.3-8.el8.x86_64                x264-libs-0.157-12.20190717git34c06d1.el8.x86_64
-  x265-libs-3.1.2-1.el8.x86_64      xvidcore-1.3.7-1.el8.x86_64                     zimg-3.0.3-1.el8.x86_64                       zvbi-0.2.35-9.el8.x86_64
-```
 
-
-Packages installed: 
-
+## Packages installed during container build: 
+Below is the output created when building the image, which lists all the python packages and apt packages are installed.
 ```
 [matt@RockyBuilder whisper-api]$ podman build -t whisper-api:$WHISPER_CONTAINER_VERSION ./
 STEP 1/9: FROM python:3.8-slim
@@ -1135,4 +1117,30 @@ Successfully tagged localhost/whisper-api:0.0.3
 edec9038b894b1d0f94152a3131f0fab3fe2a73dbe1c80837c1db7bce122cc6e
 
 
+```
+
+
+## Installed packages
+When installing ffmpeg on Rocky Linux 8, these are the packages that were installed...
+``` bash
+Installed:
+  SDL2-2.0.10-2.el8.x86_64          alsa-lib-1.2.7.2-1.el8.x86_64                   ffmpeg-4.2.8-1.el8.x86_64                     ffmpeg-libs-4.2.8-1.el8.x86_64
+  flac-libs-1.3.2-9.el8.x86_64      fribidi-1.0.4-9.el8.x86_64                      glibmm24-2.56.0-2.el8.x86_64                  graphite2-1.3.10-10.el8.x86_64
+  gsm-1.0.17-5.el8.x86_64           harfbuzz-1.7.5-3.el8.x86_64                     jack-audio-connection-kit-1.9.14-4.el8.x86_64 lame-libs-3.100-6.el8.x86_64
+  libICE-1.0.9-15.el8.x86_64        libSM-1.2.3-1.el8.x86_64                        libX11-xcb-1.6.8-5.el8.x86_64                 libXfixes-5.0.3-7.el8.x86_64
+  libXft-2.3.3-1.el8.x86_64         libXi-1.7.10-1.el8.x86_64                       libXtst-1.2.3-7.el8.x86_64                    libXxf86vm-1.1.4-9.el8.x86_64
+  libaom-3.1.1-1.el8.x86_64         libass-0.17.0-1.el8.x86_64                      libasyncns-0.8-14.el8.x86_64                  libatomic-8.5.0-16.el8_7.x86_64
+  libavdevice-4.2.8-1.el8.x86_64    libbluray-1.0.2-3.el8.x86_64                    libcdio-2.0.0-3.el8.x86_64                    libcdio-paranoia-10.2+0.94+2-3.el8.x86_64
+  libdatrie-0.2.9-7.el8.x86_64      libdav1d-0.5.2-1.el8.x86_64                     libffado-2.4.4-2.el8.x86_64                   libglvnd-1:1.3.4-1.el8.x86_64
+  libglvnd-glx-1:1.3.4-1.el8.x86_64 libiec61883-1.2.0-18.el8.x86_64                 libjpeg-turbo-1.5.3-12.el8.x86_64             libmfx-1.25-4.el8.x86_64
+  libmodplug-1:0.8.9.0-9.el8.x86_64 libogg-2:1.3.2-10.el8.x86_64                    libraw1394-2.1.2-5.el8.x86_64                 librsvg2-2.42.7-4.el8.x86_64
+  libsamplerate-0.1.9-1.el8.x86_64  libsigc++20-2.10.0-6.el8.x86_64                 libsndfile-1.0.28-12.el8.x86_64               libthai-0.1.27-2.el8.x86_64
+  libtheora-1:1.1.1-21.el8.x86_64   libv4l-1.14.2-3.el8.x86_64                      libva-2.13.0-2.el8.x86_64                     libvdpau-1.4-2.el8.x86_64
+  libvmaf-1.3.15-2.el8.x86_64       libvorbis-1:1.3.6-2.el8.x86_64                  libvpx-1.7.0-8.el8.x86_64                     libwayland-client-1.19.0-1.el8.x86_64
+  libxml++-2.40.1-10.el8.x86_64     libxshmfence-1.3-2.el8.x86_64                   mesa-filesystem-22.1.5-2.el8.x86_64           mesa-libGL-22.1.5-2.el8.x86_64
+  mesa-libglapi-22.1.5-2.el8.x86_64 ocl-icd-2.2.12-1.el8.x86_64                     openal-soft-1.18.2-7.el8.x86_64               opencore-amr-0.1.5-7.el8.x86_64
+  openjpeg2-2.4.0-5.el8.x86_64      opus-1.3-0.4.beta.el8.x86_64                    pango-1.42.4-8.el8.x86_64                     pugixml-1.13-1.el8.x86_64
+  pulseaudio-libs-14.0-4.el8.x86_64 soxr-0.1.3-4.el8.x86_64                         speex-1.2.0-1.el8.x86_64                      srt-libs-1.4.1-3.el8.x86_64
+  vapoursynth-libs-51-1.el8.x86_64  vid.stab-1.1.0-12.20190213gitaeabc8d.el8.x86_64 vo-amrwbenc-0.1.3-8.el8.x86_64                x264-libs-0.157-12.20190717git34c06d1.el8.x86_64
+  x265-libs-3.1.2-1.el8.x86_64      xvidcore-1.3.7-1.el8.x86_64                     zimg-3.0.3-1.el8.x86_64                       zvbi-0.2.35-9.el8.x86_64
 ```
