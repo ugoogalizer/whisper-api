@@ -10,7 +10,7 @@ Todo list:
 
 - [x] Get working on specific python version (3.8.5) and package versions
 - [x] Remove fastapi-offline-swagger-ui
-- [ ] Publish basic k8s manifest for deployment 
+- [x] Publish basic k8s manifest for deployment 
 - [ ] Enable authentication and authorisation on the fastapi endpoint
 - [ ] Allow the ffmpeg package to be side-loaded/installed into the container image (for when creating image from location that doesn't have internet connection)
 
@@ -23,6 +23,36 @@ Assumed done in advance, but you need `docker` or `podman` installed. This guide
 sudo dnf install nfs-utils
 sudo dnf install podman
 
+```
+
+## Optional - Side load ffmpeg apt install (.deb) files
+This step can be performed if the build environment doesn't have internet access to pull install files from an apt repository.
+
+On the dev machine:
+``` bash
+podman run python:3.8-slim tail -f /dev/null
+# In a new window, get the name of the container
+podman ps
+# Then open a bash terminal inside the container: 
+podman exec -it c13f28bc4d02 bash
+
+# Then inside the container, download but don't install the ffmpeg package and dependencies
+  ls -la /var/cache/apt/archives # Check this is empty first 
+  rm -Rf /var/cache/apt/archives/*.deb
+
+  # Download the packages
+  apt-get update
+  apt-get install --download-only ffmpeg
+
+  # Tarball up the packages
+  tar -czvf /root/ffmpeg-deb.tar.gz /var/cache/apt/archives/*.deb
+
+# Back outside the container, copy the tarball out
+sudo mkdir /media/build/whisper-api
+cd /media/build/whisper-api
+podman cp c13f28bc4d02:/root/ffmpeg-deb.tar.gz ./
+
+#TODO - now load these into a fresh container
 ```
 
 ## Build the container image
@@ -157,6 +187,281 @@ podman run python:3.8-slim tail -f /dev/null
 podman ps
 podman exec -it c13f28bc4d02 bash
 
+# Then inside the container
+  ls -la /var/cache/apt/archives
+  apt-get update
+  apt-get install --download-only ffmpeg
+  tar -czvf /root/ffmpeg-deb.tar.gz /var/cache/apt/archives/*.deb
+
+# Back outside the container
+
+
+```
+<details> 
+  <summary>Details of packages downloaded</summary>
+  ``` bash
+  root@7b45bab60543:/# apt-get install --download-only ffmpeg
+  Reading package lists... Done
+  Building dependency tree... Done
+  Reading state information... Done
+  The following additional packages will be installed:
+    alsa-topology-conf alsa-ucm-conf dbus fontconfig fontconfig-config fonts-dejavu-core i965-va-driver intel-media-va-driver libaacs0 libaom0 libapparmor1
+    libasound2 libasound2-data libass9 libasyncns0 libavc1394-0 libavcodec58 libavdevice58 libavfilter7 libavformat58 libavresample4 libavutil56 libbdplus0
+    libblas3 libbluray2 libbrotli1 libbs2b0 libbsd0 libcaca0 libcairo-gobject2 libcairo2 libcdio-cdda2 libcdio-paranoia2 libcdio19 libchromaprint1 libcodec2-0.9
+    libdatrie1 libdav1d4 libdbus-1-3 libdc1394-25 libdeflate0 libdrm-amdgpu1 libdrm-common libdrm-intel1 libdrm-nouveau2 libdrm-radeon1 libdrm2 libedit2 libelf1
+    libfftw3-double3 libflac8 libflite1 libfontconfig1 libfreetype6 libfribidi0 libgbm1 libgdk-pixbuf-2.0-0 libgdk-pixbuf2.0-bin libgdk-pixbuf2.0-common
+    libgfortran5 libgl1 libgl1-mesa-dri libglapi-mesa libglib2.0-0 libglib2.0-data libglvnd0 libglx-mesa0 libglx0 libgme0 libgomp1 libgraphite2-3 libgsm1
+    libharfbuzz0b libicu67 libiec61883-0 libigdgmm11 libjack-jackd2-0 libjbig0 libjpeg62-turbo liblapack3 liblilv-0-0 libllvm11 libmd0 libmfx1 libmp3lame0
+    libmpg123-0 libmysofa1 libnorm1 libnuma1 libogg0 libopenal-data libopenal1 libopenjp2-7 libopenmpt0 libopus0 libpango-1.0-0 libpangocairo-1.0-0
+    libpangoft2-1.0-0 libpciaccess0 libpgm-5.3-0 libpixman-1-0 libpng16-16 libpocketsphinx3 libpostproc55 libpulse0 libquadmath0 librabbitmq4 libraw1394-11
+    librsvg2-2 librsvg2-common librubberband2 libsamplerate0 libsdl2-2.0-0 libsensors-config libsensors5 libserd-0-0 libshine3 libslang2 libsnappy1v5 libsndfile1
+    libsndio7.0 libsodium23 libsord-0-0 libsoxr0 libspeex1 libsphinxbase3 libsratom-0-0 libsrt1.4-gnutls libssh-gcrypt-4 libswresample3 libswscale5 libthai-data
+    libthai0 libtheora0 libtiff5 libtwolame0 libudfread0 libusb-1.0-0 libva-drm2 libva-x11-2 libva2 libvdpau-va-gl1 libvdpau1 libvidstab1.1 libvorbis0a
+    libvorbisenc2 libvorbisfile3 libvpx6 libvulkan1 libwavpack1 libwayland-client0 libwayland-cursor0 libwayland-egl1 libwayland-server0 libwebp6 libwebpmux3
+    libwrap0 libx11-6 libx11-data libx11-xcb1 libx264-160 libx265-192 libxau6 libxcb-dri2-0 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-randr0 libxcb-render0
+    libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb1 libxcursor1 libxdamage1 libxdmcp6 libxext6 libxfixes3 libxi6 libxinerama1 libxkbcommon0 libxml2
+    libxrandr2 libxrender1 libxshmfence1 libxss1 libxv1 libxvidcore4 libxxf86vm1 libz3-4 libzmq5 libzvbi-common libzvbi0 mesa-va-drivers mesa-vdpau-drivers
+    mesa-vulkan-drivers ocl-icd-libopencl1 pocketsphinx-en-us sensible-utils shared-mime-info ucf va-driver-all vdpau-driver-all x11-common xdg-user-dirs xkb-data
+  Suggested packages:
+    default-dbus-session-bus | dbus-session-bus ffmpeg-doc i965-va-driver-shaders libasound2-plugins alsa-utils libbluray-bdj libfftw3-bin libfftw3-dev jackd2
+    libportaudio2 opus-tools pciutils pulseaudio libraw1394-doc librsvg2-bin xdg-utils lm-sensors serdi sndiod sordi speex opencl-icd nvidia-vdpau-driver
+    nvidia-tesla-440-vdpau-driver nvidia-tesla-418-vdpau-driver nvidia-legacy-390xx-vdpau-driver nvidia-legacy-340xx-vdpau-driver
+  The following NEW packages will be installed:
+    alsa-topology-conf alsa-ucm-conf dbus ffmpeg fontconfig fontconfig-config fonts-dejavu-core i965-va-driver intel-media-va-driver libaacs0 libaom0 libapparmor1
+    libasound2 libasound2-data libass9 libasyncns0 libavc1394-0 libavcodec58 libavdevice58 libavfilter7 libavformat58 libavresample4 libavutil56 libbdplus0
+    libblas3 libbluray2 libbrotli1 libbs2b0 libbsd0 libcaca0 libcairo-gobject2 libcairo2 libcdio-cdda2 libcdio-paranoia2 libcdio19 libchromaprint1 libcodec2-0.9
+    libdatrie1 libdav1d4 libdbus-1-3 libdc1394-25 libdeflate0 libdrm-amdgpu1 libdrm-common libdrm-intel1 libdrm-nouveau2 libdrm-radeon1 libdrm2 libedit2 libelf1
+    libfftw3-double3 libflac8 libflite1 libfontconfig1 libfreetype6 libfribidi0 libgbm1 libgdk-pixbuf-2.0-0 libgdk-pixbuf2.0-bin libgdk-pixbuf2.0-common
+    libgfortran5 libgl1 libgl1-mesa-dri libglapi-mesa libglib2.0-0 libglib2.0-data libglvnd0 libglx-mesa0 libglx0 libgme0 libgomp1 libgraphite2-3 libgsm1
+    libharfbuzz0b libicu67 libiec61883-0 libigdgmm11 libjack-jackd2-0 libjbig0 libjpeg62-turbo liblapack3 liblilv-0-0 libllvm11 libmd0 libmfx1 libmp3lame0
+    libmpg123-0 libmysofa1 libnorm1 libnuma1 libogg0 libopenal-data libopenal1 libopenjp2-7 libopenmpt0 libopus0 libpango-1.0-0 libpangocairo-1.0-0
+    libpangoft2-1.0-0 libpciaccess0 libpgm-5.3-0 libpixman-1-0 libpng16-16 libpocketsphinx3 libpostproc55 libpulse0 libquadmath0 librabbitmq4 libraw1394-11
+    librsvg2-2 librsvg2-common librubberband2 libsamplerate0 libsdl2-2.0-0 libsensors-config libsensors5 libserd-0-0 libshine3 libslang2 libsnappy1v5 libsndfile1
+    libsndio7.0 libsodium23 libsord-0-0 libsoxr0 libspeex1 libsphinxbase3 libsratom-0-0 libsrt1.4-gnutls libssh-gcrypt-4 libswresample3 libswscale5 libthai-data
+    libthai0 libtheora0 libtiff5 libtwolame0 libudfread0 libusb-1.0-0 libva-drm2 libva-x11-2 libva2 libvdpau-va-gl1 libvdpau1 libvidstab1.1 libvorbis0a
+    libvorbisenc2 libvorbisfile3 libvpx6 libvulkan1 libwavpack1 libwayland-client0 libwayland-cursor0 libwayland-egl1 libwayland-server0 libwebp6 libwebpmux3
+    libwrap0 libx11-6 libx11-data libx11-xcb1 libx264-160 libx265-192 libxau6 libxcb-dri2-0 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-randr0 libxcb-render0
+    libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb1 libxcursor1 libxdamage1 libxdmcp6 libxext6 libxfixes3 libxi6 libxinerama1 libxkbcommon0 libxml2
+    libxrandr2 libxrender1 libxshmfence1 libxss1 libxv1 libxvidcore4 libxxf86vm1 libz3-4 libzmq5 libzvbi-common libzvbi0 mesa-va-drivers mesa-vdpau-drivers
+    mesa-vulkan-drivers ocl-icd-libopencl1 pocketsphinx-en-us sensible-utils shared-mime-info ucf va-driver-all vdpau-driver-all x11-common xdg-user-dirs xkb-data
+  0 upgraded, 208 newly installed, 0 to remove and 0 not upgraded.
+  Need to get 153 MB of archives.
+  After this operation, 501 MB of additional disk space will be used.
+  Do you want to continue? [Y/n] Y
+  Get:1 http://deb.debian.org/debian bullseye/main amd64 libapparmor1 amd64 2.13.6-10 [99.3 kB]
+  Get:2 http://deb.debian.org/debian bullseye/main amd64 libdbus-1-3 amd64 1.12.24-0+deb11u1 [222 kB]
+  Get:3 http://deb.debian.org/debian bullseye/main amd64 dbus amd64 1.12.24-0+deb11u1 [243 kB]
+  Get:4 http://deb.debian.org/debian bullseye/main amd64 sensible-utils all 0.0.14 [14.8 kB]
+  Get:5 http://deb.debian.org/debian bullseye/main amd64 ucf all 3.0043 [74.0 kB]
+  Get:6 http://deb.debian.org/debian bullseye/main amd64 alsa-topology-conf all 1.2.4-1 [12.8 kB]
+  Get:7 http://deb.debian.org/debian bullseye/main amd64 libasound2-data all 1.2.4-1.1 [38.2 kB]
+  Get:8 http://deb.debian.org/debian bullseye/main amd64 libasound2 amd64 1.2.4-1.1 [356 kB]
+  Get:9 http://deb.debian.org/debian bullseye/main amd64 alsa-ucm-conf all 1.2.4-2 [28.1 kB]
+  Get:10 http://deb.debian.org/debian bullseye/main amd64 libaom0 amd64 1.0.0.errata1-3 [1158 kB]
+  Get:11 http://deb.debian.org/debian bullseye/main amd64 libdrm-common all 2.4.104-1 [14.9 kB]
+  Get:12 http://deb.debian.org/debian bullseye/main amd64 libdrm2 amd64 2.4.104-1 [41.5 kB]
+  Get:13 http://deb.debian.org/debian bullseye/main amd64 libva2 amd64 2.10.0-1 [68.7 kB]
+  Get:14 http://deb.debian.org/debian bullseye/main amd64 libmfx1 amd64 21.1.0-1 [3289 kB]
+  Get:15 http://deb.debian.org/debian bullseye/main amd64 libva-drm2 amd64 2.10.0-1 [19.0 kB]
+  Get:16 http://deb.debian.org/debian bullseye/main amd64 libxau6 amd64 1:1.0.9-1 [19.7 kB]
+  Get:17 http://deb.debian.org/debian bullseye/main amd64 libmd0 amd64 1.0.3-3 [28.0 kB]
+  Get:18 http://deb.debian.org/debian bullseye/main amd64 libbsd0 amd64 0.11.3-1 [108 kB]
+  Get:19 http://deb.debian.org/debian bullseye/main amd64 libxdmcp6 amd64 1:1.1.2-3 [26.3 kB]
+  Get:20 http://deb.debian.org/debian bullseye/main amd64 libxcb1 amd64 1.14-3 [140 kB]
+  Get:21 http://deb.debian.org/debian bullseye/main amd64 libx11-data all 2:1.7.2-1 [311 kB]
+  Get:22 http://deb.debian.org/debian bullseye/main amd64 libx11-6 amd64 2:1.7.2-1 [772 kB]
+  Get:23 http://deb.debian.org/debian bullseye/main amd64 libxext6 amd64 2:1.3.3-1.1 [52.7 kB]
+  Get:24 http://deb.debian.org/debian bullseye/main amd64 libxfixes3 amd64 1:5.0.3-2 [22.1 kB]
+  Get:25 http://deb.debian.org/debian bullseye/main amd64 libva-x11-2 amd64 2.10.0-1 [24.0 kB]
+  Get:26 http://deb.debian.org/debian bullseye/main amd64 libvdpau1 amd64 1.4-3 [29.4 kB]
+  Get:27 http://deb.debian.org/debian bullseye/main amd64 ocl-icd-libopencl1 amd64 2.2.14-2 [42.5 kB]
+  Get:28 http://deb.debian.org/debian bullseye/main amd64 libavutil56 amd64 7:4.3.5-0+deb11u1 [311 kB]
+  Get:29 http://deb.debian.org/debian bullseye/main amd64 libbrotli1 amd64 1.0.9-2+b2 [279 kB]
+  Get:30 http://deb.debian.org/debian bullseye/main amd64 libpng16-16 amd64 1.6.37-3 [294 kB]
+  Get:31 http://deb.debian.org/debian bullseye/main amd64 libfreetype6 amd64 2.10.4+dfsg-1+deb11u1 [418 kB]
+  Get:32 http://deb.debian.org/debian bullseye/main amd64 fonts-dejavu-core all 2.37-2 [1069 kB]
+  Get:33 http://deb.debian.org/debian bullseye/main amd64 fontconfig-config all 2.13.1-4.2 [281 kB]
+  Get:34 http://deb.debian.org/debian bullseye/main amd64 libfontconfig1 amd64 2.13.1-4.2 [347 kB]
+  Get:35 http://deb.debian.org/debian bullseye/main amd64 libpixman-1-0 amd64 0.40.0-1.1~deb11u1 [543 kB]
+  Get:36 http://deb.debian.org/debian bullseye/main amd64 libxcb-render0 amd64 1.14-3 [111 kB]
+  Get:37 http://deb.debian.org/debian bullseye/main amd64 libxcb-shm0 amd64 1.14-3 [101 kB]
+  Get:38 http://deb.debian.org/debian bullseye/main amd64 libxrender1 amd64 1:0.9.10-1 [33.0 kB]
+  Get:39 http://deb.debian.org/debian bullseye/main amd64 libcairo2 amd64 1.16.0-5 [694 kB]
+  Get:40 http://deb.debian.org/debian bullseye/main amd64 libcodec2-0.9 amd64 0.9.2-4 [7890 kB]
+  Get:41 http://deb.debian.org/debian bullseye/main amd64 libdav1d4 amd64 0.7.1-3 [333 kB]
+  Get:42 http://deb.debian.org/debian bullseye/main amd64 libglib2.0-0 amd64 2.66.8-1 [1370 kB]
+  Get:43 http://deb.debian.org/debian bullseye/main amd64 libgsm1 amd64 1.0.18-2 [27.7 kB]
+  Get:44 http://deb.debian.org/debian bullseye/main amd64 libmp3lame0 amd64 3.100-3 [364 kB]
+  Get:45 http://deb.debian.org/debian bullseye/main amd64 libopenjp2-7 amd64 2.4.0-3 [172 kB]
+  Get:46 http://deb.debian.org/debian bullseye/main amd64 libopus0 amd64 1.3.1-0.1 [190 kB]
+  Get:47 http://deb.debian.org/debian bullseye/main amd64 libcairo-gobject2 amd64 1.16.0-5 [125 kB]
+  Get:48 http://deb.debian.org/debian bullseye/main amd64 libgdk-pixbuf2.0-common all 2.42.2+dfsg-1+deb11u1 [320 kB]
+  Get:49 http://deb.debian.org/debian bullseye/main amd64 libicu67 amd64 67.1-7 [8622 kB]
+  Get:50 http://deb.debian.org/debian bullseye/main amd64 libxml2 amd64 2.9.10+dfsg-6.7+deb11u3 [693 kB]
+  Get:51 http://deb.debian.org/debian bullseye/main amd64 shared-mime-info amd64 2.0-1 [701 kB]
+  Get:52 http://deb.debian.org/debian bullseye/main amd64 libjpeg62-turbo amd64 1:2.0.6-4 [151 kB]
+  Get:53 http://deb.debian.org/debian bullseye/main amd64 libdeflate0 amd64 1.7-1 [53.1 kB]
+  Get:54 http://deb.debian.org/debian bullseye/main amd64 libjbig0 amd64 2.1-3.1+b2 [31.0 kB]
+  Get:55 http://deb.debian.org/debian bullseye/main amd64 libwebp6 amd64 0.6.1-2.1 [258 kB]
+  Get:56 http://deb.debian.org/debian-security bullseye-security/main amd64 libtiff5 amd64 4.2.0-1+deb11u4 [290 kB]
+  Get:57 http://deb.debian.org/debian bullseye/main amd64 libgdk-pixbuf-2.0-0 amd64 2.42.2+dfsg-1+deb11u1 [147 kB]
+  Get:58 http://deb.debian.org/debian bullseye/main amd64 fontconfig amd64 2.13.1-4.2 [417 kB]
+  Get:59 http://deb.debian.org/debian bullseye/main amd64 libfribidi0 amd64 1.0.8-2+deb11u1 [64.9 kB]
+  Get:60 http://deb.debian.org/debian bullseye/main amd64 libgraphite2-3 amd64 1.3.14-1 [81.2 kB]
+  Get:61 http://deb.debian.org/debian bullseye/main amd64 libharfbuzz0b amd64 2.7.4-1 [1471 kB]
+  Get:62 http://deb.debian.org/debian bullseye/main amd64 libthai-data all 0.1.28-3 [170 kB]
+  Get:63 http://deb.debian.org/debian bullseye/main amd64 libdatrie1 amd64 0.2.13-1 [42.7 kB]
+  Get:64 http://deb.debian.org/debian bullseye/main amd64 libthai0 amd64 0.1.28-3 [54.2 kB]
+  Get:65 http://deb.debian.org/debian bullseye/main amd64 libpango-1.0-0 amd64 1.46.2-3 [191 kB]
+  Get:66 http://deb.debian.org/debian bullseye/main amd64 libpangoft2-1.0-0 amd64 1.46.2-3 [62.2 kB]
+  Get:67 http://deb.debian.org/debian bullseye/main amd64 libpangocairo-1.0-0 amd64 1.46.2-3 [50.6 kB]
+  Get:68 http://deb.debian.org/debian bullseye/main amd64 librsvg2-2 amd64 2.50.3+dfsg-1 [2460 kB]
+  Get:69 http://deb.debian.org/debian bullseye/main amd64 libshine3 amd64 3.1.1-2 [23.6 kB]
+  Get:70 http://deb.debian.org/debian bullseye/main amd64 libsnappy1v5 amd64 1.1.8-1 [17.9 kB]
+  Get:71 http://deb.debian.org/debian bullseye/main amd64 libspeex1 amd64 1.2~rc1.2-1.1 [55.4 kB]
+  Get:72 http://deb.debian.org/debian bullseye/main amd64 libgomp1 amd64 10.2.1-6 [99.9 kB]
+  Get:73 http://deb.debian.org/debian bullseye/main amd64 libsoxr0 amd64 0.1.3-4 [77.8 kB]
+  Get:74 http://deb.debian.org/debian bullseye/main amd64 libswresample3 amd64 7:4.3.5-0+deb11u1 [109 kB]
+  Get:75 http://deb.debian.org/debian bullseye/main amd64 libogg0 amd64 1.3.4-0.1 [27.3 kB]
+  Get:76 http://deb.debian.org/debian bullseye/main amd64 libtheora0 amd64 1.1.1+dfsg.1-15 [169 kB]
+  Get:77 http://deb.debian.org/debian bullseye/main amd64 libtwolame0 amd64 0.4.0-2 [51.1 kB]
+  Get:78 http://deb.debian.org/debian bullseye/main amd64 libvorbis0a amd64 1.3.7-1 [93.0 kB]
+  Get:79 http://deb.debian.org/debian bullseye/main amd64 libvorbisenc2 amd64 1.3.7-1 [80.6 kB]
+  Get:80 http://deb.debian.org/debian bullseye/main amd64 libvpx6 amd64 1.9.0-1 [829 kB]
+  Get:81 http://deb.debian.org/debian bullseye/main amd64 libwavpack1 amd64 5.4.0-1 [87.8 kB]
+  Get:82 http://deb.debian.org/debian bullseye/main amd64 libwebpmux3 amd64 0.6.1-2.1 [97.6 kB]
+  Get:83 http://deb.debian.org/debian bullseye/main amd64 libx264-160 amd64 2:0.160.3011+gitcde9a93-2.1 [539 kB]
+  Get:84 http://deb.debian.org/debian bullseye/main amd64 libnuma1 amd64 2.0.12-1+b1 [26.3 kB]
+  Get:85 http://deb.debian.org/debian bullseye/main amd64 libx265-192 amd64 3.4-2 [1095 kB]
+  Get:86 http://deb.debian.org/debian bullseye/main amd64 libxvidcore4 amd64 2:1.3.7-1 [242 kB]
+  Get:87 http://deb.debian.org/debian bullseye/main amd64 libzvbi-common all 0.2.35-18 [64.6 kB]
+  Get:88 http://deb.debian.org/debian bullseye/main amd64 libzvbi0 amd64 0.2.35-18 [271 kB]
+  Get:89 http://deb.debian.org/debian bullseye/main amd64 libavcodec58 amd64 7:4.3.5-0+deb11u1 [4960 kB]
+  Get:90 http://deb.debian.org/debian bullseye/main amd64 libraw1394-11 amd64 2.1.2-2 [41.1 kB]
+  Get:91 http://deb.debian.org/debian bullseye/main amd64 libavc1394-0 amd64 0.5.4-5 [19.9 kB]
+  Get:92 http://deb.debian.org/debian bullseye/main amd64 libass9 amd64 1:0.15.0-2 [100.0 kB]
+  Get:93 http://deb.debian.org/debian bullseye/main amd64 libudfread0 amd64 1.1.1-1 [16.4 kB]
+  Get:94 http://deb.debian.org/debian bullseye/main amd64 libbluray2 amd64 1:1.2.1-4+deb11u2 [139 kB]
+  Get:95 http://deb.debian.org/debian bullseye/main amd64 libchromaprint1 amd64 1.5.0-2 [40.8 kB]
+  Get:96 http://deb.debian.org/debian bullseye/main amd64 libgme0 amd64 0.6.3-2 [128 kB]
+  Get:97 http://deb.debian.org/debian bullseye/main amd64 libmpg123-0 amd64 1.26.4-1 [142 kB]
+  Get:98 http://deb.debian.org/debian bullseye/main amd64 libvorbisfile3 amd64 1.3.7-1 [26.1 kB]
+  Get:99 http://deb.debian.org/debian bullseye/main amd64 libopenmpt0 amd64 0.4.11-1 [616 kB]
+  Get:100 http://deb.debian.org/debian bullseye/main amd64 librabbitmq4 amd64 0.10.0-1 [41.0 kB]
+  Get:101 http://deb.debian.org/debian bullseye/main amd64 libsrt1.4-gnutls amd64 1.4.2-1.3 [271 kB]
+  Get:102 http://deb.debian.org/debian bullseye/main amd64 libssh-gcrypt-4 amd64 0.9.5-1+deb11u1 [218 kB]
+  Get:103 http://deb.debian.org/debian bullseye/main amd64 libnorm1 amd64 1.5.9+dfsg-2 [221 kB]
+  Get:104 http://deb.debian.org/debian bullseye/main amd64 libpgm-5.3-0 amd64 5.3.128~dfsg-2 [161 kB]
+  Get:105 http://deb.debian.org/debian bullseye/main amd64 libsodium23 amd64 1.0.18-1 [161 kB]
+  Get:106 http://deb.debian.org/debian bullseye/main amd64 libzmq5 amd64 4.3.4-1 [275 kB]
+  Get:107 http://deb.debian.org/debian bullseye/main amd64 libavformat58 amd64 7:4.3.5-0+deb11u1 [1055 kB]
+  Get:108 http://deb.debian.org/debian bullseye/main amd64 libbs2b0 amd64 3.1.0+dfsg-2.2+b1 [12.2 kB]
+  Get:109 http://deb.debian.org/debian bullseye/main amd64 libflite1 amd64 2.2-2 [12.8 MB]
+  Get:110 http://deb.debian.org/debian bullseye/main amd64 libserd-0-0 amd64 0.30.10-2 [46.0 kB]
+  Get:111 http://deb.debian.org/debian bullseye/main amd64 libsord-0-0 amd64 0.16.8-2 [24.2 kB]
+  Get:112 http://deb.debian.org/debian bullseye/main amd64 libsratom-0-0 amd64 0.6.8-1 [17.9 kB]
+  Get:113 http://deb.debian.org/debian bullseye/main amd64 liblilv-0-0 amd64 0.24.12-2 [49.2 kB]
+  Get:114 http://deb.debian.org/debian bullseye/main amd64 libmysofa1 amd64 1.2~dfsg0-1 [1157 kB]
+  Get:115 http://deb.debian.org/debian bullseye/main amd64 libblas3 amd64 3.9.0-3 [153 kB]
+  Get:116 http://deb.debian.org/debian bullseye/main amd64 libquadmath0 amd64 10.2.1-6 [145 kB]
+  Get:117 http://deb.debian.org/debian bullseye/main amd64 libgfortran5 amd64 10.2.1-6 [727 kB]
+  Get:118 http://deb.debian.org/debian bullseye/main amd64 liblapack3 amd64 3.9.0-3 [2166 kB]
+  Get:119 http://deb.debian.org/debian bullseye/main amd64 libasyncns0 amd64 0.8-6+b2 [12.9 kB]
+  Get:120 http://deb.debian.org/debian bullseye/main amd64 libflac8 amd64 1.3.3-2+deb11u1 [112 kB]
+  Get:121 http://deb.debian.org/debian bullseye/main amd64 libsndfile1 amd64 1.0.31-2 [188 kB]
+  Get:122 http://deb.debian.org/debian bullseye/main amd64 libwrap0 amd64 7.6.q-31 [59.0 kB]
+  Get:123 http://deb.debian.org/debian bullseye/main amd64 libpulse0 amd64 14.2-2 [285 kB]
+  Get:124 http://deb.debian.org/debian bullseye/main amd64 libsphinxbase3 amd64 0.8+5prealpha+1-12 [120 kB]
+  Get:125 http://deb.debian.org/debian bullseye/main amd64 libpocketsphinx3 amd64 0.8+5prealpha+1-13 [124 kB]
+  Get:126 http://deb.debian.org/debian bullseye/main amd64 libpostproc55 amd64 7:4.3.5-0+deb11u1 [107 kB]
+  Get:127 http://deb.debian.org/debian bullseye/main amd64 libfftw3-double3 amd64 3.3.8-2 [733 kB]
+  Get:128 http://deb.debian.org/debian bullseye/main amd64 libsamplerate0 amd64 0.2.1+ds0-1 [954 kB]
+  Get:129 http://deb.debian.org/debian bullseye/main amd64 librubberband2 amd64 1.9.0-1 [86.0 kB]
+  Get:130 http://deb.debian.org/debian bullseye/main amd64 libswscale5 amd64 7:4.3.5-0+deb11u1 [210 kB]
+  Get:131 http://deb.debian.org/debian bullseye/main amd64 libvidstab1.1 amd64 1.1.0-2+b1 [37.8 kB]
+  Get:132 http://deb.debian.org/debian bullseye/main amd64 libavfilter7 amd64 7:4.3.5-0+deb11u1 [1300 kB]
+  Get:133 http://deb.debian.org/debian bullseye/main amd64 libslang2 amd64 2.3.2-5 [509 kB]
+  Get:134 http://deb.debian.org/debian bullseye/main amd64 libcaca0 amd64 0.99.beta19-2.2 [348 kB]
+  Get:135 http://deb.debian.org/debian bullseye/main amd64 libcdio19 amd64 2.1.0-2 [204 kB]
+  Get:136 http://deb.debian.org/debian bullseye/main amd64 libcdio-cdda2 amd64 10.2+2.0.0-1+b2 [20.7 kB]
+  Get:137 http://deb.debian.org/debian bullseye/main amd64 libcdio-paranoia2 amd64 10.2+2.0.0-1+b2 [20.5 kB]
+  Get:138 http://deb.debian.org/debian bullseye/main amd64 libusb-1.0-0 amd64 2:1.0.24-3 [60.2 kB]
+  Get:139 http://deb.debian.org/debian bullseye/main amd64 libdc1394-25 amd64 2.2.6-3 [108 kB]
+  Get:140 http://deb.debian.org/debian bullseye/main amd64 libglvnd0 amd64 1.3.2-1 [53.6 kB]
+  Get:141 http://deb.debian.org/debian bullseye/main amd64 libglapi-mesa amd64 20.3.5-1 [71.7 kB]
+  Get:142 http://deb.debian.org/debian bullseye/main amd64 libx11-xcb1 amd64 2:1.7.2-1 [203 kB]
+  Get:143 http://deb.debian.org/debian bullseye/main amd64 libxcb-dri2-0 amd64 1.14-3 [103 kB]
+  Get:144 http://deb.debian.org/debian bullseye/main amd64 libxcb-dri3-0 amd64 1.14-3 [102 kB]
+  Get:145 http://deb.debian.org/debian bullseye/main amd64 libxcb-glx0 amd64 1.14-3 [118 kB]
+  Get:146 http://deb.debian.org/debian bullseye/main amd64 libxcb-present0 amd64 1.14-3 [101 kB]
+  Get:147 http://deb.debian.org/debian bullseye/main amd64 libxcb-sync1 amd64 1.14-3 [105 kB]
+  Get:148 http://deb.debian.org/debian bullseye/main amd64 libxcb-xfixes0 amd64 1.14-3 [105 kB]
+  Get:149 http://deb.debian.org/debian bullseye/main amd64 libxdamage1 amd64 1:1.1.5-2 [15.7 kB]
+  Get:150 http://deb.debian.org/debian bullseye/main amd64 libxshmfence1 amd64 1.3-1 [8820 B]
+  Get:151 http://deb.debian.org/debian bullseye/main amd64 libxxf86vm1 amd64 1:1.1.4-1+b2 [20.8 kB]
+  Get:152 http://deb.debian.org/debian bullseye/main amd64 libdrm-amdgpu1 amd64 2.4.104-1 [28.5 kB]
+  Get:153 http://deb.debian.org/debian bullseye/main amd64 libpciaccess0 amd64 0.16-1 [53.6 kB]
+  Get:154 http://deb.debian.org/debian bullseye/main amd64 libdrm-intel1 amd64 2.4.104-1 [71.8 kB]
+  Get:155 http://deb.debian.org/debian bullseye/main amd64 libdrm-nouveau2 amd64 2.4.104-1 [26.8 kB]
+  Get:156 http://deb.debian.org/debian bullseye/main amd64 libdrm-radeon1 amd64 2.4.104-1 [30.2 kB]
+  Get:157 http://deb.debian.org/debian bullseye/main amd64 libelf1 amd64 0.183-1 [165 kB]
+  Get:158 http://deb.debian.org/debian bullseye/main amd64 libedit2 amd64 3.1-20191231-2+b1 [96.7 kB]
+  Get:159 http://deb.debian.org/debian bullseye/main amd64 libz3-4 amd64 4.8.10-1 [6949 kB]
+  Get:160 http://deb.debian.org/debian bullseye/main amd64 libllvm11 amd64 1:11.0.1-2 [17.9 MB]
+  Get:161 http://deb.debian.org/debian bullseye/main amd64 libsensors-config all 1:3.6.0-7 [32.3 kB]
+  Get:162 http://deb.debian.org/debian bullseye/main amd64 libsensors5 amd64 1:3.6.0-7 [52.3 kB]
+  Get:163 http://deb.debian.org/debian bullseye/main amd64 libvulkan1 amd64 1.2.162.0-1 [103 kB]
+  Get:164 http://deb.debian.org/debian bullseye/main amd64 libgl1-mesa-dri amd64 20.3.5-1 [9633 kB]
+  Get:165 http://deb.debian.org/debian bullseye/main amd64 libglx-mesa0 amd64 20.3.5-1 [186 kB]
+  Get:166 http://deb.debian.org/debian bullseye/main amd64 libglx0 amd64 1.3.2-1 [35.7 kB]
+  Get:167 http://deb.debian.org/debian bullseye/main amd64 libgl1 amd64 1.3.2-1 [89.5 kB]
+  Get:168 http://deb.debian.org/debian bullseye/main amd64 libiec61883-0 amd64 1.2.0-4 [31.4 kB]
+  Get:169 http://deb.debian.org/debian bullseye/main amd64 libjack-jackd2-0 amd64 1.9.17~dfsg-1 [289 kB]
+  Get:170 http://deb.debian.org/debian bullseye/main amd64 libopenal-data all 1:1.19.1-2 [170 kB]
+  Get:171 http://deb.debian.org/debian bullseye/main amd64 libsndio7.0 amd64 1.5.0-3 [24.7 kB]
+  Get:172 http://deb.debian.org/debian bullseye/main amd64 libopenal1 amd64 1:1.19.1-2 [501 kB]
+  Get:173 http://deb.debian.org/debian bullseye/main amd64 libwayland-server0 amd64 1.18.0-2~exp1.1 [34.4 kB]
+  Get:174 http://deb.debian.org/debian bullseye/main amd64 libgbm1 amd64 20.3.5-1 [73.5 kB]
+  Get:175 http://deb.debian.org/debian bullseye/main amd64 libwayland-client0 amd64 1.18.0-2~exp1.1 [26.9 kB]
+  Get:176 http://deb.debian.org/debian bullseye/main amd64 libwayland-cursor0 amd64 1.18.0-2~exp1.1 [14.6 kB]
+  Get:177 http://deb.debian.org/debian bullseye/main amd64 libwayland-egl1 amd64 1.18.0-2~exp1.1 [8448 B]
+  Get:178 http://deb.debian.org/debian bullseye/main amd64 libxcursor1 amd64 1:1.2.0-2 [37.3 kB]
+  Get:179 http://deb.debian.org/debian bullseye/main amd64 libxi6 amd64 2:1.7.10-1 [83.4 kB]
+  Get:180 http://deb.debian.org/debian bullseye/main amd64 libxinerama1 amd64 2:1.1.4-2 [17.7 kB]
+  Get:181 http://deb.debian.org/debian bullseye/main amd64 xkb-data all 2.29-2 [655 kB]
+  Get:182 http://deb.debian.org/debian bullseye/main amd64 libxkbcommon0 amd64 1.0.3-2 [101 kB]
+  Get:183 http://deb.debian.org/debian bullseye/main amd64 libxrandr2 amd64 2:1.5.1-1 [37.5 kB]
+  Get:184 http://deb.debian.org/debian bullseye/main amd64 x11-common all 1:7.7+22 [252 kB]
+  Get:185 http://deb.debian.org/debian bullseye/main amd64 libxss1 amd64 1:1.2.3-1 [17.8 kB]
+  Get:186 http://deb.debian.org/debian bullseye/main amd64 libsdl2-2.0-0 amd64 2.0.14+dfsg2-3+deb11u1 [506 kB]
+  Get:187 http://deb.debian.org/debian bullseye/main amd64 libxcb-shape0 amd64 1.14-3 [102 kB]
+  Get:188 http://deb.debian.org/debian bullseye/main amd64 libxv1 amd64 2:1.0.11-1 [24.6 kB]
+  Get:189 http://deb.debian.org/debian bullseye/main amd64 libavdevice58 amd64 7:4.3.5-0+deb11u1 [127 kB]
+  Get:190 http://deb.debian.org/debian bullseye/main amd64 libavresample4 amd64 7:4.3.5-0+deb11u1 [105 kB]
+  Get:191 http://deb.debian.org/debian bullseye/main amd64 ffmpeg amd64 7:4.3.5-0+deb11u1 [1597 kB]
+  Get:192 http://deb.debian.org/debian bullseye/main amd64 i965-va-driver amd64 2.4.1+dfsg1-1 [309 kB]
+  Get:193 http://deb.debian.org/debian bullseye/main amd64 libigdgmm11 amd64 20.4.1+ds1-1 [112 kB]
+  Get:194 http://deb.debian.org/debian bullseye/main amd64 intel-media-va-driver amd64 21.1.1+dfsg1-1 [1915 kB]
+  Get:195 http://deb.debian.org/debian bullseye/main amd64 libaacs0 amd64 0.9.0-2 [52.4 kB]
+  Get:196 http://deb.debian.org/debian bullseye/main amd64 libbdplus0 amd64 0.1.2-3 [47.5 kB]
+  Get:197 http://deb.debian.org/debian bullseye/main amd64 libgdk-pixbuf2.0-bin amd64 2.42.2+dfsg-1+deb11u1 [25.7 kB]
+  Get:198 http://deb.debian.org/debian bullseye/main amd64 libglib2.0-data all 2.66.8-1 [1164 kB]
+  Get:199 http://deb.debian.org/debian bullseye/main amd64 librsvg2-common amd64 2.50.3+dfsg-1 [31.0 kB]
+  Get:200 http://deb.debian.org/debian bullseye/main amd64 libvdpau-va-gl1 amd64 0.4.2-1+b1 [71.3 kB]
+  Get:201 http://deb.debian.org/debian bullseye/main amd64 libxcb-randr0 amd64 1.14-3 [113 kB]
+  Get:202 http://deb.debian.org/debian bullseye/main amd64 mesa-va-drivers amd64 20.3.5-1 [2623 kB]
+  Get:203 http://deb.debian.org/debian bullseye/main amd64 mesa-vdpau-drivers amd64 20.3.5-1 [2744 kB]
+  Get:204 http://deb.debian.org/debian bullseye/main amd64 mesa-vulkan-drivers amd64 20.3.5-1 [4086 kB]
+  Get:205 http://deb.debian.org/debian bullseye/main amd64 pocketsphinx-en-us all 0.8+5prealpha+1-13 [24.3 MB]
+  Get:206 http://deb.debian.org/debian bullseye/main amd64 va-driver-all amd64 2.10.0-1 [15.3 kB]
+  Get:207 http://deb.debian.org/debian bullseye/main amd64 vdpau-driver-all amd64 1.4-3 [8540 B]
+  Get:208 http://deb.debian.org/debian bullseye/main amd64 xdg-user-dirs amd64 0.17-2 [53.8 kB]
+
+  ```
+
+</details>
+
+```
 # Then inside the container
   apt-get update
   apt-get install apt-offline
