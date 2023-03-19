@@ -12,7 +12,7 @@ Todo list:
 - [x] Remove fastapi-offline-swagger-ui
 - [x] Publish basic k8s manifest for deployment 
 - [ ] Enable authentication and authorisation on the fastapi endpoint
-- [ ] Allow the ffmpeg package to be side-loaded/installed into the container image (for when creating image from location that doesn't have internet connection)
+- [x] Allow the ffmpeg package to be side-loaded/installed into the container image (for when creating image from location that doesn't have internet connection)
 
 # Build Container Image
 ## Setup local docker box
@@ -28,15 +28,13 @@ sudo dnf install podman
 ## Optional - Side load ffmpeg apt install (.deb) files
 This step can be performed if the build environment doesn't have internet access to pull install files from an apt repository.
 
-On the dev machine:
+On a build machine with internet access:
 ``` bash
-podman run python:3.8-slim tail -f /dev/null
-# In a new window, get the name of the container
-podman ps
-# Then open a bash terminal inside the container: 
-podman exec -it c13f28bc4d02 bash
+# Create a temporary container WITH internet connection to download the apt packages with
+# This container will exit when your terminal to it closes
+podman run -it python:3.8-slim bash
 
-# Then inside the container, download but don't install the ffmpeg package and dependencies
+  # Then inside the container, download but don't install the ffmpeg package and dependencies
   ls -la /var/cache/apt/archives # Check this is empty first 
   rm -Rf /var/cache/apt/archives/*.deb
 
@@ -47,22 +45,48 @@ podman exec -it c13f28bc4d02 bash
   # Tarball up the packages
   tar -czvf /root/ffmpeg-deb.tar.gz /var/cache/apt/archives/*.deb
 
+  # Tarball up the apt lists also
+  tar -czvf /root/apt-lists.tar.gz /var/lib/apt/lists/*
+
 # Back outside the container, copy the tarball out
 sudo mkdir /media/build/whisper-api
 cd /media/build/whisper-api
-podman cp c13f28bc4d02:/root/ffmpeg-deb.tar.gz ./
+podman cp cc6789c91260:/root/ffmpeg-deb.tar.gz ./
+podman cp cc6789c91260:/root/apt-lists.tar.gz ./
 
-#TODO - now load these into a fresh container
+# Cleanup - on the builder host, stop all the temp containers: 
+podman stop cc6789c91260
+```
+Manually copy the tar.gz file to the intended destination build environment (presumed without internet access).  I n copied to `/media/build/whisper-api/`
+
+### Testing Side load - OPTIONAL
+
+Optionally we can test that the side import works on a destination build machine (i.e. without internet access):
+``` bash
+cd /media/build/whisper-api
+podman cp ./ffmpeg-deb.tar.gz cc6789c91260:/root/ffmpeg-deb.tar.gz 
+podman cp ./apt-lists.tar.gz cc6789c91260:/root/
+
+# Create a temporary container that exists so long as the terminal is open
+podman run -it python:3.8-slim bash
+  # Inside the container terminal:
+  tar -xzvf /root/ffmpeg-deb.tar.gz -C /  #destination path was stored when creating the tarball
+  tar -xzvf /root/apt-lists.tar.gz -C /
+  apt-get install ffmpeg
 ```
 
 ## Build the container image
 ``` bash
 sudo mkdir /media/build/whisper-api
 sudo chown matt:matt /media/build/whisper-api
-git clone TODO
-export WHISPER_CONTAINER_VERSION=0.0.3  #increment version number
+#git clone TODO
+export WHISPER_CONTAINER_VERSION=0.0.5  #increment version number
+
+# If building with internet access: 
 podman build -t whisper-api:$WHISPER_CONTAINER_VERSION ./ 
 
+# Else building without internet access (you have to have obtained the two tarballs from above)
+podman build -f Dockerfile.offline -t whisper-api:$WHISPER_CONTAINER_VERSION ./ 
 ```
 
 ## Push the container image to harbor
@@ -90,20 +114,17 @@ You should see results similar to:
 # Locally Run/Test Container
 
 For CPU:
-```
+``` bash
 podman run -d -p 9000:9000 -e ASR_MODEL=base localhost/whisper-api:$WHISPER_CONTAINER_VERSION
 ```
 For GPU (untested since branching):
-```
-podman run -d --gpus all -p 9000:9000 -e ASR_MODEL=base localhost/whisper-api:$WHISPER_CONTAINER_VERSION
-```
-
-## Run Container: 
-
 ``` bash
+podman run -d --gpus all -p 9000:9000 -e ASR_MODEL=base localhost/whisper-api:$WHISPER_CONTAINER_VERSION
 
+# You may have to disable firewall on your linux box to connect: 
+sudo systemctl stop firewalld 
+sudo systemctl disable firewalld
 ```
-
 
 # Development Outside Container
 You can run the script directly on a Linux dev machine if you require. Note that this does not work on Windows due to gunicorn not running on Windows.
@@ -137,18 +158,17 @@ ffmpeg -version
 
 ``` bash
 #Create venv
-  cd <path to git repo>
-  # cd /media/build/whisper-api
-  python -m venv whisper-venv
+cd <path to git repo>
+# cd /media/build/whisper-api
+python -m venv whisper-venv
 
 #Enable the venv
-  source whisper-venv/bin/activate
+source whisper-venv/bin/activate
 
 # Install packages
 pip install -r requirements.txt
 
 # Run the app
-# python ./app/webservice.py
 export ASR_MODEL=tiny # select which model
 gunicorn --bind 0.0.0.0:9000 --workers 1 --timeout 0 app.webservice:app -k uvicorn.workers.UvicornWorker
 
@@ -156,13 +176,11 @@ gunicorn --bind 0.0.0.0:9000 --workers 1 --timeout 0 app.webservice:app -k uvico
 curl -v http://192.168.2.41:9000
 
 # You may have to disable firewall on your linux box to connect: 
-sudo systemctl stop firewalld
+sudo systemctl stop firewalld 
+sudo systemctl disable firewalld
 # Delete the venv (if you really want) - just delete folder ./whisper-venv
 
 ```
-
-
-
 
 # Models 
 
@@ -175,17 +193,14 @@ The model downloads / belongs in the following folder:
 
 Latest model download locations can be found from the [whisper __init__.py](https://github.com/openai/whisper/blob/main/whisper/__init__.py)
 
-
 # Notes
-
-
 
 ## Testing to find install packages required 
 On the dev machine:
 ``` bash
-podman run python:3.8-slim tail -f /dev/null
+podman run -it python:3.8-slim bash
 podman ps
-podman exec -it c13f28bc4d02 bash
+podman exec -it cc6789c91260 bash
 
 # Then inside the container
   ls -la /var/cache/apt/archives
@@ -194,7 +209,6 @@ podman exec -it c13f28bc4d02 bash
   tar -czvf /root/ffmpeg-deb.tar.gz /var/cache/apt/archives/*.deb
 
 # Back outside the container
-
 
 ```
 <details> 

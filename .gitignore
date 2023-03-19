@@ -2,3 +2,4 @@ whisper-venv/
 .vscode
 __pycache__
 *.gz
+*.tar
